@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <title>CNC程序历史记录</title>
+    <link href="../bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <!-- <script src="../js/jquery-3.7.1.min.js"></script>
+    <script src="../bootstrap/js/bootstrap.min.js"></script> -->
+</head>
+
+<body>
+<div class="container-fluid mt-4">
+    <!-- 筛选条件 -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">木工CNC-Ard程序上传历史查询</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label>品号：</label>
+                        <input class="form-control" id="productCodeH" placeholder="输入品号后自动加载" type="text">
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="form-group">
+                        <label>散板类型：</label>
+                        <select class="form-control" id="filterType">
+                            <option value="">全部</option>
+                            <option>TypeA</option>
+                            <option>TypeB</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-group">
+                        <label>申请日期范围：</label>
+                        <div class="input-daterange input-group">
+                            <input class="form-control" id="startDate" type="date">
+                            <div class="input-group-append">
+                                <span class="input-group-text">至</span>
+                            </div>
+                            <input class="form-control" id="endDate" type="date">
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="form-group">
+                        <label>挂起状态：</label>
+                        <select class="form-control" id="filterSuspend">
+                            <option value="">全部</option>
+                            <option value="true">已挂起</option>
+                            <option value="false">未挂起</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 历史记录表格 -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover">
+                    <thead class="thead-light">
+                    <tr class="text-truncate">
+                        <th>序号</th>
+                        <th>品号</th>
+                        <th>品名</th>
+                        <th>规格</th>
+                        <th>散板类型</th>
+                        <th>工程师</th>
+                        <th>申请日期</th>
+                        <th>是否挂起</th>
+                        <th>挂起原因</th>
+                        <th>挂起时间</th>
+                        <th>挂起人员</th>
+                        <th>CNC程序名</th>
+                        <th>CAD图纸</th>
+                    </tr>
+                    </thead>
+                    <tbody id="historyBody">
+                    <tr>
+                        <td colspan="13">输入品号查询历史记录</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script>
+    // const ip = 'http://10.10.11.36:8080';
+    let allHistoryData1 = []; // 存储原始数据
+
+    // 监听品号输入
+    $('#productCodeH').on('input', function () {
+        const code = $(this).val().trim();
+        if (!code) {
+            allHistoryData1 = [];
+            renderTable();
+            return;
+        }
+
+        fetch(`${ip}/cnc/${encodeURIComponent(code)}`)
+            .then(res => res.json())
+            .then(data => {
+                allHistoryData1 = data;
+                addFilters(); // 动态更新筛选选项
+                applyFilters();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                $('#historyBody').html(`<tr class="text-danger">
+                    <td colspan="13">数据加载失败: ${error.message}</td></tr>`);
+            });
+    });
+
+    // 绑定筛选条件变化事件
+    $('#filterType, #filterSuspend, #startDate, #endDate').on('change', applyFilters);
+
+    function applyFilters() {
+        const filtered = allHistoryData1.flatMap(record =>
+            (record.details || []).map(detail => ({
+                ...record,
+                detail // 展开细节数据
+            }))
+        ).filter(item => {
+            // 散板类型筛选
+            const typeMatch = !$('#filterType').val() ||
+                item.detail.scatteredType === $('#filterType').val();
+
+            // 日期筛选
+            const date = new Date(item.applyDate);
+            const start = $('#startDate').val() ? new Date($('#startDate').val()) : null;
+            const end = $('#endDate').val() ? new Date($('#endDate').val()) : null;
+            const dateMatch = (!start || date >= start) && (!end || date <= end);
+
+            // 挂起状态筛选
+            const suspendState = $('#filterSuspend').val();
+            const suspendMatch = suspendState === "" ||
+                (suspendState === "true" ? item.detail.state === "1" : item.detail.state !== "1");
+
+            return typeMatch && dateMatch && suspendMatch;
+        });
+
+        renderTable(filtered);
+    }
+
+    function renderTable(data) {
+        const tbody = $('#historyBody').empty();
+
+        if (!data.length) {
+            tbody.html('<tr><td colspan="13">没有匹配的记录</td></tr>');
+            return;
+        }
+
+        data.forEach((item, index) => {
+            tbody.append(`
+                <tr>
+                    <td>${index + 1}</td>
+                    <td><span class="badge badge-info">${item.productCode}</span></td>
+                    <td>${item.productName || '-'}</td>
+                    <td>${item.specification || '-'}</td>
+                    <td><span class="badge badge-light border">${item.detail.scatteredType || '-'}</span></td>
+                    <td><span class="badge badge-secondary">${item.engineer || '-'}</span></td>
+                    <td>${formatDate(item.applyDate)}</td>
+                    <td>${item.detail.state === '1' ?
+                '<span class="badge badge-danger">是</span>' :
+                '<span class="badge badge-success">否</span>'}</td>
+                    <td>${item.detail.suspendReason || '-'}</td>
+                    <td>${formatDate(item.detail.suspendTime)}</td>
+                    <td><span class="badge badge-secondary">${item.detail.suspender || '-'}</span></td>
+                    <td>${item.detail.cncArdProgram || '-'}</td>
+                    <td>${item.cadFileName || '-'}</td>
+                </tr>
+            `);
+        });
+    }
+
+    function formatDate(dateStr) {
+        return dateStr ? new Date(dateStr).toISOString().split('T')[0] : '-';
+    }
+
+    // 动态生成散板类型筛选选项
+    function addFilters() {
+        // 改用details字段并添加空数组保护
+        const types = [...new Set(allHistoryData1.flatMap(r =>
+            (r.details || []).map(d => d.scatteredType)
+        ))].filter(Boolean); // 过滤空值
+
+        $('#filterType').html(`
+        <option value="">全部</option>
+        ${types.map(t => `<option>${t}</option>`).join('')}
+    `);
+    }
+</script>
+
+</body>
+
+</html>

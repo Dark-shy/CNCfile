@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>木工CNC程序管理系统</title>
+    <link href="../bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <script src="../js/jquery-3.7.1.min.js"></script>
+    <script src="../bootstrap/js/bootstrap.min.js"></script>
+    <script src="../bootstrap/js/bootstrap.bundle.min.js"></script>
+</head>
+<style>
+    @media (min-width: 1600px) {
+        .custom-xxl-container {
+            max-width: 1500px;
+            /* 自定义宽度 */
+            margin: 0 auto;
+            /* 居中显示 */
+        }
+    }
+
+    /* 自定义增强样式 */
+    .btn-hover-effect {
+        transition: all 0.3s ease;
+        border-radius: 25px;
+        padding: 8px 20px !important;
+    }
+
+    .btn-hover-effect:hover {
+        background: #FFFFFF;
+        transform: translateY(-2.5px);
+    }
+
+    .btn-rounded {
+        border-radius: 25px;
+        padding: 8px 25px;
+    }
+
+    .dropdown-menu {
+        border: none;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .nav-item.active .nav-link {
+        background: linear-gradient(45deg, #1e90ff, #00bfff);
+        border-radius: 25px;
+    }
+
+</style>
+<body>
+<nav class="navbar navbar-expand-lg navbar-light bg-white">
+    <div class="container-fluid">
+        <a class="navbar-brand font-weight-bold text-primary" href="#">
+            <div class="brand-img-container">
+                <img alt="系统logo" class="d-inline-block align-top mr-2 rounded-pill shadow-sm" height="39"
+                     src="../logo.png"
+                     width="177.5"></div>
+            <span class="brand-text d-none d-sm-inline font-italic">
+                    生产中心程序管理
+                </span>
+        </a>
+        <!-- 新增移动端菜单按钮动画 -->
+        <button aria-label="切换导航菜单" class="navbar-toggler" data-target="#navbarNav" data-toggle="collapse"
+                type="button">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ml-auto">
+                <li class="nav-item">
+                    <a aria-label="文件下载" class="btn-hover-effect nav-link" href="#"
+                       onclick="loadPage('cncDownloadUser.html')"
+                       role="button">
+                        文件下载
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a aria-label="文件管理" class="btn-hover-effect nav-link" href="#"
+                       onclick="loadPage('cncHistory.html')"
+                       role="button">
+                        上传记录
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a aria-label="下载记录" class="btn-hover-effect nav-link" href="#"
+                       onclick="loadPage('cncDownloadHistory.html')"
+                       role="button">
+                        下载记录
+                    </a>
+                </li>
+                <li class="nav-item ml-auto">
+                    <a class="btn-hover-effect " id="changePasswordBtn" type="button">
+                        更改密码
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+<div class="modal fade" id="myModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title">密码管理</h5>
+                <button aria-label="关闭" class="close" data-dismiss="modal" type="button">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="dataFormUser" novalidate>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="font-weight-bold">姓名</label>
+                        <input class="form-control" id="username" required type="text">
+                        <div class="invalid-feedback">请输入姓名</div>
+                    </div>
+                    <div class="form-group">
+                        <label class="font-weight-bold">新密码</label>
+                        <input class="form-control" id="password" minlength="6" pattern="^(?=.*[A-Za-z])(?=.*\d).+$"
+                               required
+                               type="text">
+                        <div class="invalid-feedback">此项为必填项</div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button class="btn btn-secondary" data-dismiss="modal" type="button">取消</button>
+                    <button class="btn btn-primary" id="changePassword" type="submit">提交</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<div class="container-fluid my-5" id="content">
+    <div class="animate__animated animate__fadeIn"></div>
+</div>
+
+<script>
+    let ip = 'http://10.10.10.104:8080';
+    var workcode = localStorage.getItem('workcode') ?? sessionStorage.getItem('workcode');
+    var Name;
+    // console.log(workcode);
+    // 获取用户信息
+    $.ajax({
+        url: ip + '/user/' + workcode,
+        type: 'GET',
+        success: function (response) {
+            $('#addUser').val(response.userName).prop('readonly', true);
+            $('#department').val(response.userSector).prop('readonly', true);
+            Name = response.userName;
+        },
+        error: function (error) {
+            alert('获取用户信息失败');
+        }
+    });
+    $('#changePasswordBtn').click(showEditorPassword);
+
+    //初始模态框
+    function showEditorPassword() {
+        $('#dataFormUser')[0].reset();
+        $('#dataFormUser').removeClass('was-validated');
+        $('#myModal').modal('show');
+        $('#myModal').modal('show').on('shown.bs.modal', function () {
+            $('#username').val(Name).prop('readonly', true);
+        });
+    }
+
+    //更改密码
+    $('#changePassword').click(function () {
+        // 禁用按钮防重复提交
+        $(this).prop('disabled', true);
+
+        // 收集表单数据
+        const formData = {
+            username: workcode,
+            password: $('#password').val(),
+            role: null
+        };
+
+        // 发送请求
+        $.ajax({
+            url: ip + '/update/user',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(formData),
+            success: function () {
+                alert('修改成功');
+                $('#myModal').modal('hide');
+            },
+            error: function (xhr) {
+                alert('错误: ' + xhr.responseJSON?.message);
+            },
+            complete: function () {
+                $('#changePassword').prop('disabled', false);
+            }
+        });
+    });
+    if (localStorage.getItem('role') !== 'userB' && sessionStorage.getItem('role') !== 'userB') {
+        // 如果未登录，重定向到登录页面
+        window.location.href = '../login.html';
+    }
+    // 初始化历史记录管理
+    let currentPage = 'cncDownloadUser.html';
+    history.replaceState({page: currentPage}, null, `#${currentPage}`);
+
+    // 增强版页面加载函数
+    function loadPage(page) {
+        const loadingOverlay = $('.loading-overlay');
+
+        // 显示加载动画
+        loadingOverlay.fadeIn(200);
+
+        // 更新导航状态
+        $('.nav-link').removeClass('active');
+        $(`a[onclick*="${page}"]`).addClass('active');
+
+        // 更新浏览器历史记录
+        history.pushState({page}, null, `#${page}`);
+
+        // 添加请求超时处理（15秒）
+        const ajaxPromise = $.ajax({
+            url: `${page}?t=${Date.now()}`,
+            method: 'GET',
+            timeout: 15000
+        });
+
+        // 使用Promise处理异步流程
+        Promise.resolve(ajaxPromise)
+            .then(data => {
+                const $temp = $('<div>').html(data);
+                const content = $temp.find('body').html() || data;
+
+                // 安全处理脚本
+                const scripts = $temp.find('script').detach();
+
+                // 准备内容更新
+                $('#content').css('opacity', 0);
+
+                setTimeout(() => {
+                    $('#content').html(content).css('opacity', 1);
+
+                    // 安全执行脚本
+                    scripts.each(function () {
+                        if (this.src) {
+                            // 外部脚本
+                            const script = document.createElement('script');
+                            script.src = this.src;
+                            document.body.appendChild(script);
+                        } else {
+                            // 内联脚本
+                            try {
+                                new Function(this.text || this.textContent)();
+                            } catch (e) {
+                                console.error('脚本执行错误:', e);
+                            }
+                        }
+                    });
+                }, 300);
+            })
+            .catch(xhr => {
+                console.error(`请求失败: ${xhr.status}`);
+                $('#content').html(`
+                        <div class="alert alert-danger text-center py-4">
+                            <h4 class="alert-heading">⚠️ 加载失败</h4>
+                            <p>错误代码：${xhr.status}</p>
+                            <button class="btn btn-outline-primary mt-3" 
+                                    onclick="loadPage('${currentPage}')">
+                                重试
+                            </button>
+                        </div>
+                    `);
+            })
+            .finally(() => {
+                loadingOverlay.fadeOut(300);
+                currentPage = page;
+            });
+    }
+
+    // 浏览器后退/前进事件处理
+    window.addEventListener('popstate', function (event) {
+        if (event.state?.page) {
+            loadPage(event.state.page);
+        }
+    });
+
+    // 初始化加载默认页面
+    $(document).ready(function () {
+        loadPage(currentPage);
+
+        // 添加首次加载动画
+        $('#content')
+            .hide()
+            .fadeIn(500)
+            .addClass('animate__animated animate__fadeInUp');
+    });
+</script>
+</body>
+
+</html>

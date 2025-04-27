@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <title>CNC下载记录查询系统</title>
+    <link href="../bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <!-- <script src="../js/jquery-3.7.1.min.js"></script>
+        <script src="../bootstrap/js/bootstrap.min.js"></script> -->
+    <style>
+        .table-fixed {
+            table-layout: fixed;
+        }
+
+        .table-hover tbody tr:hover {
+            background-color: rgba(0, 123, 255, 0.05);
+        }
+
+        .download-time {
+            min-width: 160px;
+        }
+
+        .shadow-soft {
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.05);
+        }
+    </style>
+</head>
+
+<body>
+<div class="container-fluid mt-4">
+    <!-- 查询条件 -->
+    <div class="card shadow-soft mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">木工CNC-Ard程序下载历史查询</h5>
+        </div>
+        <div class="card-body">
+
+
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <div class="input-group">
+                        <input aria-label="品号查询" class="form-control border-primary" id="productCodeD"
+                               placeholder="请输入品号"
+                               type="text">
+                        <div class="input-group-append">
+                            <button class="btn btn-primary" onclick="getData()" type="button">
+                                <i class="fas fa-search mr-2"></i>查询
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-3 mb-3">
+                    <select class="form-control selectpicker" data-style="btn-primary" id="filterType">
+                        <option value="">全部散板类型</option>
+                    </select>
+                </div>
+
+                <div class="col-md-3 mb-3">
+                    <select class="form-control selectpicker" data-style="btn-primary" id="filterDownloader">
+                        <option value="">全部下载人员</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 数据表格 -->
+    <div class="card shadow-soft">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover mb-0">
+                    <thead class="thead-light">
+                    <tr class="text-truncate">
+                        <th scope="col" style="width: 60px">序号</th>
+                        <th scope="col">品号</th>
+                        <th scope="col">品名</th>
+                        <th scope="col">规格</th>
+                        <th scope="col" style="width: 120px">散板类型</th>
+                        <th scope="col">工程师</th>
+                        <th scope="col">申请日期</th>
+                        <th scope="col">CNC程序名</th>
+                        <th scope="col">CAD文件</th>
+                        <th class="download-time" scope="col">下载时间</th>
+                        <th scope="col">操作人员</th>
+                    </tr>
+                    </thead>
+                    <tbody id="dataBody">
+                    <!-- 空数据提示 -->
+                    <tr class="d-none" id="emptyRow">
+                        <td class="text-center py-5 text-muted" colspan="11">
+                            <i class="fas fa-database fa-2x mb-3"></i>
+                            <p>未找到匹配的记录</p>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // const ip = 'http://10.10.11.36:8080';
+    // 获取数据函数
+    function getData() {
+        const productCode = $('#productCodeD').val();
+
+        // 模拟AJAX请求
+        $.ajax({
+            url: ip + `/history/` + encodeURIComponent(productCode),
+            type: 'GET',
+            success: function (response) {
+                initFilters(response);
+                renderTable(response);
+            },
+            error: function () {
+                console.error('数据获取失败');
+            }
+        });
+
+    }
+
+    // 初始化筛选器
+    function initFilters(data) {
+        // 散板类型筛选
+        const types = [...new Set(data.map(d => d.scattered_type))];
+        $('#filterType').html([
+            '<option value="">全部散板</option>',
+            ...types.map(t => `<option>${t}</option>`)
+        ].join(''));
+
+        // 下载人员筛选
+        const downloaders = [...new Set(data.map(d => d.downloader))];
+        $('#filterDownloader').html([
+            '<option value="">全部人员</option>',
+            ...downloaders.map(d => `<option>${d}</option>`)
+        ].join(''));
+    }
+
+    // 表格渲染
+    // 增强表格渲染
+    function renderTable(data) {
+        const $tbody = $('#dataBody');
+        const $emptyRow = $('#emptyRow');
+
+        $tbody.children().not('#emptyRow').remove();
+
+        if (data.length === 0) {
+            $emptyRow.removeClass('d-none');
+            return;
+        }
+
+        $emptyRow.addClass('d-none');
+
+        data.forEach((item, index) => {
+            const tr = `
+                    <tr>
+                        <th scope="row">${index + 1}</th>
+                        <td><span class="badge badge-info">${item.product_code}</span></td>
+                        <td>${item.product_name}</td>
+                        <td>${item.specification}</td>
+                        <td>
+                            <span class="badge badge-light border">${item.scattered_type}</span>
+                        </td>
+                        <td><span class="badge badge-secondary">${item.engineer}</span></td>
+                        <td>${formatDate(item.apply_date)}</td>
+                        <td>
+                                ${item.cnc_ard_program}
+                        </td>
+                        <td>${item.cad_file_name}
+                            
+                        </td>
+                        <td class="download-time">
+                            ${formatDate(item.download_time)}
+                        </td>
+                        <td>
+                            <span class="badge badge-secondary">${item.downloader}</span>
+                        </td>
+                    </tr>
+                `;
+            $tbody.append(tr);
+        });
+    }
+
+    function formatDate(dateStr) {
+        return dateStr ? new Date(dateStr).toISOString().split('T')[0] : '-';
+    }
+
+
+    // 添加回车键支持
+    $('#productCodeD').on('keypress', function (e) {
+        if (e.which === 13) getData();
+    });
+
+    // 数据筛选
+    function filterData(data) {
+        const typeFilter = $('#filterType').val();
+        const downloaderFilter = $('#filterDownloader').val();
+
+        return data.filter(d => {
+            const typeMatch = !typeFilter || d.scattered_type === typeFilter;
+            const downloaderMatch = !downloaderFilter || d.downloader === downloaderFilter;
+            return typeMatch && downloaderMatch;
+        });
+    }
+
+    // 初始化筛选器事件
+    $('#filterType, #filterDownloader').on('change', () => renderTable(mockData));
+
+    // 页面初始化
+    $(document).ready(() => {
+        $('#filterType, #filterDownloader').on('change', () => renderTable(mockData));
+    });
+</script>
+</body>
+
+</html>

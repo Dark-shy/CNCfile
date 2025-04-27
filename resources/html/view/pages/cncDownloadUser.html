@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <link href="../bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <script src="../js/jquery-3.7.1.min.js"></script>
+    <script src="../bootstrap/js/bootstrap.min.js"></script>
+    <title>木工CNC加工程序管理系统</title>
+    <style>
+        .suspend-reason-cell {
+            min-width: 150px;
+            /* 增加最小宽度 */
+            max-width: 200px;
+            word-break: break-word;
+            /* 允许长文本换行 */
+        }
+
+        .operation-cell {
+            min-width: 220px;
+            /* 增加操作列宽度 */
+            white-space: nowrap;
+            /* 按钮不换行 */
+        }
+
+        /* 新增列宽控制 */
+        .product-code-cell {
+            min-width: 100px;
+        }
+
+        .spec-cell {
+            min-width: 100px;
+        }
+
+        .cnc-program-cell {
+            min-width: 100px;
+            word-break: break-word;
+        }
+    </style>
+</head>
+
+<body>
+<div class="container-fluid mt-4">
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">程序查询条件</h4>
+        </div>
+        <div class="card-body">
+            <form class="form-inline" id="searchForm">
+                <div class="form-group mr-3">
+                    <input class="form-control" id="productCode" placeholder="输入品号" required type="text">
+                </div>
+                <div class="form-group mr-3">
+                    <select class="form-control" id="scatteredType">
+                        <option value="">全部散板类型</option>
+                        <!-- 动态选项将在此生成 -->
+                    </select>
+                </div>
+                <button class="btn btn-success mr-2" id="select" type="submit">查询</button>
+                <button class="btn btn-info" id="cadDownload" type="button">CAD图纸</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="card mt-4 shadow-sm">
+        <div class="card-header bg-secondary text-white">
+            <h4 class="mb-0">加工程序记录</h4>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover mb-0">
+                    <thead class="bg-light">
+                    <tr class="text-truncate">
+                        <th class="product-code-cell">品号</th>
+                        <th>品名</th>
+                        <th class="spec-cell">规格</th>
+                        <th>机种名</th>
+                        <th>散板类型</th>
+                        <th>版本</th>
+                        <th>工程师</th>
+                        <th class="cnc-program-cell">CNC程序名</th>
+                        <th>状态</th>
+                        <th class="suspend-reason-cell">挂起原因</th>
+                        <th class="operation-cell">操作</th>
+                    </tr>
+                    </thead>
+                    <tbody id="programRecords"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let ip = 'http://127.0.0.1:8080';
+    var workcode = 74166;
+    var Name;
+    var oaId;
+    // console.log(workcode);
+    // 获取用户信息
+    $.ajax({
+        url: ip + '/user/' + workcode,
+        type: 'GET',
+        success: function (response) {
+            $('#addUser').val(response.userName).prop('readonly', true);
+            $('#department').val(response.userSector).prop('readonly', true);
+            Name = response.userName;
+            oaId = response.oaId;
+        },
+        error: function (error) {
+            alert('获取用户信息失败');
+        }
+    });
+    let currentData = [];
+
+    // 动态构建散板类型选项
+    function buildScatteredTypeOptions(data) {
+        const $select = $('#scatteredType');
+        $select.empty().append('<option value="">全部散板类型</option>');
+
+        // 获取所有唯一散板类型
+        const types = [...new Set(data.map(item => item.scattered_type))];
+
+        types.forEach(type => {
+            $select.append(`<option value="${type}">${type}</option>`);
+        });
+    }
+
+    // 文件下载功能
+    function downloadProgram(fileName, CncDetailId) {
+        window.location.href =
+            `${ip}/file/download/?procedureName=${encodeURIComponent(fileName)}`;
+        // 发送PUT请求到后端
+        $.ajax({
+            url: ip + '/cnc/user',
+            type: 'PUT',
+            contentType: 'application/json',
+
+            data: JSON.stringify({
+                workCode: workcode,
+                reason: CncDetailId,
+                time: new Date().toISOString()
+            }),
+            success: function (response) {
+                // 请求成功的处理逻辑
+            },
+            error: function (xhr, status, error) {
+                // 请求失败的处理逻辑
+            }
+        });
+    }
+
+    function getLatestValidCAD() {
+        // 检查数据有效性
+        if (!currentData || !Array.isArray(currentData) || currentData.length === 0) {
+            console.error("数据不存在或为空");
+            return null;
+        }
+
+        // 过滤并排序数据
+        const validEntries = currentData
+            .filter(entry =>
+                entry?.cad_file_name &&          // 检查 cad_file_name 存在且非空
+                entry?.apply_date               // 检查 apply_date 存在
+            )
+            .sort((a, b) => {
+                // 将日期字符串转为时间戳比较
+                const dateA = new Date(a.apply_date).getTime();
+                const dateB = new Date(b.apply_date).getTime();
+                return dateB - dateA;           // 降序排列（最新日期在前）
+            });
+
+        // 返回结果
+        if (validEntries.length === 0) {
+            console.warn("未找到有效CAD文件记录");
+            return null;
+        }
+
+        return validEntries[0].cad_file_name;
+    }
+
+    // CAD图纸下载
+    function downloadCAD() {
+        const selectedProgram = getLatestValidCAD();
+        if (!selectedProgram) {
+            alert("请先查询有效数据");
+            return;
+        }
+        window.location.href =
+            `${ip}/file/download/?procedureName=${encodeURIComponent(selectedProgram)}`;
+    }
+
+    // 挂起操作处理
+    async function handleSuspend(row) {
+        const reasonInput = row.find('.suspend-reason');
+        const reason = reasonInput.val().trim();
+        const cncName = row.find('.cnc-program-cell').text();
+        const $btn = row.find('.btn-suspend');
+
+        if (!reason) {
+            alert('挂起原因不能为空');
+            reasonInput.focus();
+            return;
+        }
+
+        try {
+            $btn.prop('disabled', true); // 禁用按钮防止重复提交
+            const recordId = row.data('id');
+            const time = new Date().toISOString();
+            console.log(cncName);
+            updateRowOnSuspend(row);
+            // 并行发送两个请求（根据需求选择并行或串行）
+            await Promise.all([
+                // 原始 CNC 挂起请求
+                $.ajax({
+                    url: `${ip}/cnc/${recordId}`,
+                    type: 'PUT',
+                    contentType: 'application/json',
+                    timeout: 10000,
+                    data: JSON.stringify({
+                        workCode: workcode,
+                        reason: reason,
+                        time: time
+                    })
+                }),
+
+                // 新增的 OA 系统通知请求
+                $.ajax({
+                    url: `${ip}/toOA`,
+                    type: 'POST',
+                    contentType: 'application/json',
+                    timeout: 5000, // OA 请求可设更短超时
+                    data: JSON.stringify({
+                        gqyy: reason,
+                        gqrq: time,
+                        oaId: oaId,
+                        cnccxmc: cncName
+                    }),
+                    success: function (response) {
+                        alert(response)
+                    }
+                })
+            ]);
+
+            // 两个请求都成功后的操作
+
+            alert('程序已经挂起');
+        } catch (error) {
+
+            console.error('文件成功挂起,自动提醒工程师失败，请自行联系工程师解决', error);
+        }
+    }
+
+    function updateRowOnSuspend(row) {
+        row.find('.status-badge')
+            .text('已挂起')
+            .removeClass('badge-success')
+            .addClass('badge-danger');
+        row.find('.btn').prop('disabled', true);
+        row.find('.suspend-reason').prop('readonly', true);
+    }
+
+    // 渲染表格数据
+    function renderTable(selectedType) {
+        $('#programRecords').empty();
+
+        currentData
+            .filter(item => {
+                const type = item.scattered_type || '';
+                return !selectedType || type === selectedType;
+            })
+            .forEach(item => {
+                const isActive = item.state === "0";
+                const row = $(`
+                        <tr data-id="${item.id}">
+                            <td><span class="badge badge-info">${item.product_code}</span></td>
+                            <td>${item.product_name}</td>
+                            <td>${item.specification}</td>
+                            <td>${item.model_name}</td>
+                            <td>
+                            <span class="badge badge-light border">${item.scattered_type}</span>
+                            </td>
+                            <td>${item.version}</td>
+                            <td><span class="badge badge-secondary">${item.engineer}</span></td>
+                            <td>${item.cnc_ard_program}</td>
+                            <td>
+                                <span class="badge ${isActive ? 'badge-success' : 'badge-danger'} status-badge">
+                                    ${isActive ? '正常' : '已挂起'}
+                                </span>
+                            </td>
+                            <td>
+                                <input type="text" class="form-control form-control-sm suspend-reason" 
+                                       value="${item.suspend_reason || ''}" 
+                                       ${!isActive ? 'readonly' : ''}>
+                            </td>
+                            <td>
+                                <div class="d-flex gap-2">
+                                <button class="btn btn-sm btn-success mr-1" 
+                                    ${!isActive ? 'disabled' : ''}
+                                    onclick="downloadProgram('${item.cnc_ard_program}','${item.id}')">
+                                    Ard下载
+                                </button>
+                               
+                                <button class="btn btn-sm btn-warning suspend-btn" 
+                                    ${!isActive ? 'disabled' : ''}>
+                                    挂起
+                                </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `);
+
+                row.find('.suspend-btn').click(() => handleSuspend(row));
+                $('#programRecords').append(row);
+            });
+    }
+
+
+    // 初始化事件
+    $(document).ready(() => {
+        $('#cadDownload').click(downloadCAD);
+        $('#scatteredType').change(function () {
+            renderTable($(this).val() || '');
+        });
+        $('#searchForm').submit(async function (e) {
+            e.preventDefault();
+            const productCode = $('#productCode').val().trim();
+            if (!productCode) return;
+
+            try {
+                // 发送实际请求到后端接口
+                const response = await $.ajax({
+                    url: `${ip}/cncfile/${encodeURIComponent(productCode)}`,
+                    method: 'GET',
+                    dataType: 'json'
+                });
+
+                currentData = response;
+                // 动态构建下拉选项
+                buildScatteredTypeOptions(currentData);
+                renderTable($('#scatteredType').val());
+            } catch (error) {
+                console.error('数据获取失败:', error);
+                let errorMsg = '数据加载失败，请重试';
+
+                if (error.status === 404) {
+                    errorMsg = '未找到该产品编码对应的数据';
+                } else if (error.status >= 500) {
+                    errorMsg = '服务器暂时不可用，请稍后重试';
+                }
+
+                alert(errorMsg);
+            }
+        });
+    });
+</script>
+</body>
+
+</html>

@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>CNC散板类型管理</title>
+    <link href="../bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+
+    <!-- <script src="../js/jquery-3.7.1.min.js"></script>
+    <script src="../bootstrap/js/bootstrap.bundle.min.js"></script> -->
+    <style>
+        .table thead th {
+            background-color: #f8f9fa;
+            border-top: 2px solid #dee2e6;
+        }
+
+        .card-header {
+            background-color: rgba(0, 123, 255, .03);
+            border-bottom: 1px solid rgba(0, 123, 255, .125);
+        }
+
+        .highlight {
+            background-color: #fff3cd;
+            font-weight: bold;
+        }
+
+        .data-counter {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+    </style>
+</head>
+
+<body>
+<div class="container-fluid mt-4">
+    <div class="card shadow">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h3 class="mb-0">CNC散板类型管理</h3>
+            <span class="data-counter" id="dataCounter"></span>
+        </div>
+
+        <div class="card-body">
+            <!-- 搜索和操作区域 -->
+            <div class="row mb-4 align-items-center">
+                <div class="col-md-6 mb-3 mb-md-0">
+                    <div class="input-group">
+                        <input class="form-control" id="productCodeSearch" oninput="handleSearchInput()"
+                               placeholder="输入散板类型进行检索"
+                               type="text">
+                        <div class="input-group-append">
+                            <button class="btn btn-outline-primary" onclick="filterData()" type="button">
+                                <i class="fa fa-search"></i>
+                            </button>
+                            <button class="btn btn-outline-secondary" onclick="clearSearch()" type="button">
+                                <i class="fa fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 text-md-right">
+                    <button class="btn btn-primary px-4" onclick="showEditor()">
+                        <i class="fa fa-plus mr-2"></i>新增类型
+                    </button>
+                </div>
+            </div>
+
+            <!-- 数据表格 -->
+            <div class="table-responsive">
+                <table class="table table-hover table-striped mb-0">
+                    <thead class="thead-light">
+                    <tr>
+                        <th scope="col" style="width: 45%;">添加用户</th>
+                        <th scope="col">散板类型</th>
+                    </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 编辑模态框 -->
+    <div class="modal fade" id="editModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title">新增散板类型</h5>
+                    <button aria-label="关闭" class="close" data-dismiss="modal" type="button">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form id="dataForm" novalidate>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label class="font-weight-bold">用户</label>
+                            <input class="form-control" id="user" required type="text">
+                            <div class="invalid-feedback">请输入姓名</div>
+                        </div>
+                        <div class="form-group">
+                            <label class="font-weight-bold">散板类型</label>
+                            <input class="form-control" id="scatteredType" required type="text">
+                            <div class="invalid-feedback">此项为必填项</div>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light">
+                        <button class="btn btn-secondary" data-dismiss="modal" type="button">取消</button>
+                        <button class="btn btn-primary" type="submit">保存</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 通知容器 -->
+    <div class="toast-container" id="notificationContainer" style="position: fixed; bottom: 20px; right: 20px;">
+    </div>
+</div>
+
+<script>
+    // let ip = 'http://10.10.11.36:8080';
+    let allData = []; // 存储全部数据
+    var workcode = localStorage.getItem('workcode') ?? sessionStorage.getItem('workcode');
+    // 获取用户信息
+
+
+    // 初始化加载
+    $(document).ready(function () {
+        loadAllData();
+        $('#dataForm').off('submit').on('submit', handleFormSubmit);
+    });
+
+    // 加载全部数据
+    async function loadAllData() {
+        try {
+            const data = await $.ajax({
+                url: ip + '/detail',
+                method: 'GET',
+                beforeSend: showLoading
+            });
+            allData = data;
+            filterData();
+            updateDataCounter();
+        } catch (err) {
+            console.error('数据加载失败:', err);
+            showNotice('error', '数据加载失败');
+        }
+    }
+
+    // 前端筛选逻辑
+    function filterData() {
+        const keyword = $('#productCodeSearch').val().trim().toLowerCase();
+        const filteredData = keyword
+            ? allData.filter(item =>
+                item.scatteredType.toLowerCase().includes(keyword))
+            : allData;
+
+        renderTable(filteredData);
+        updateDataCounter(filteredData.length);
+    }
+
+    // 实时搜索处理（带防抖）
+    const handleSearchInput = debounce(() => {
+        filterData();
+        highlightMatches();
+    }, 300);
+
+    // 清空搜索
+    function clearSearch() {
+        $('#productCodeSearch').val('');
+        filterData();
+        highlightMatches();
+    }
+
+    // 渲染表格
+    function renderTable(data) {
+        const $tbody = $('tbody').empty();
+        if (data.length === 0) {
+            $tbody.append(`
+                    <tr>
+                        <td colspan="2" class="text-center text-muted">未找到匹配数据</td>
+                    </tr>
+                `);
+            return;
+        }
+
+        data.forEach(item => {
+            $tbody.append(`
+                    <tr>
+                        <td>${item.userName}</td>
+                        <td>${item.scatteredType}</td>
+                    </tr>
+                `);
+        });
+        highlightMatches();
+    }
+
+    // 高亮匹配内容
+    function highlightMatches() {
+        const keyword = $('#productCodeSearch').val().trim();
+        if (!keyword) return;
+
+        $('td:nth-child(2)').each(function () {
+            const text = $(this).text();
+            const regex = new RegExp(`(${keyword})`, 'gi');
+            const newText = text.replace(regex, '<span class="highlight">$1</span>');
+            $(this).html(newText);
+        });
+    }
+
+    // 更新数据统计
+    function updateDataCounter(filteredCount = allData.length) {
+        $('#dataCounter').html(`
+                总数据：${allData.length} 条 / 当前显示：${filteredCount} 条
+            `);
+    }
+
+    // 显示加载状态
+    function showLoading() {
+        $('tbody').html(`
+                <tr>
+                    <td colspan="2" class="text-center">
+                        <div class="spinner-border text-primary"></div>
+                        <div class="text-muted mt-2">数据加载中...</div>
+                    </td>
+                </tr>
+            `);
+    }
+
+    // 表单提交处理
+    async function handleFormSubmit(e) {
+        e.preventDefault();
+        const form = e.target;
+        const $submitBtn = $(form).find('button[type="submit"]');
+        // $submitBtn.prop('disabled', true);
+        if (!form.checkValidity()) {
+            $(form).addClass('was-validated');
+            return;
+        }
+
+        // 唯一性验证
+        const scatteredType = $('#scatteredType').val().trim();
+        const userName = $('#user').val().trim();
+
+        // 检查是否已存在相同品号和类型的组合
+        const isDuplicate = allData.some(item =>
+            item.scatteredType === scatteredType
+        );
+
+        if (isDuplicate) {
+            showNotice('error', '已存在相同的散板类型配置');
+            return;
+        }
+
+        try {
+            const response = await saveData({
+                userName: userName,
+                scatteredType: scatteredType
+            });
+
+            // 更新本地数据
+            allData.push({
+                userName: userName,
+                scatteredType: scatteredType
+            });
+
+            // 清空输入框
+            $('#scatteredType').val('').focus();
+            $('#user').val(userName);
+
+            filterData();
+            showNotice('success', '保存成功');
+        } catch (err) {
+            console.error('保存失败:', err);
+            showNotice('error', '保存失败: ' + (err.responseJSON?.message || ''));
+        }
+    }
+
+    // 保存数据到后端
+    async function saveData(formData) {
+        return await $.ajax({
+            url: ip + '/detail',
+            method: 'PUT',
+            contentType: 'application/json',
+            data: JSON.stringify(formData)
+        });
+    }
+
+    // 防抖函数
+    function debounce(func, wait) {
+        let timeout;
+        return function (...args) {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), wait);
+        };
+    }
+
+    function showEditor() {
+        $('#dataForm')[0].reset();
+        $('#dataForm').removeClass('was-validated');
+        $('#editModal').modal('show');
+        $('#editModal').modal('show').on('shown.bs.modal', function () {
+            $.ajax({
+                url: ip + '/user/' + workcode,
+                type: 'GET',
+                success: function (response) {
+                    $('#user').val(response.userName).prop('readonly', true);
+                }
+            });
+        });
+    }
+
+
+    function showNotice(type, message) {
+        const toast = $(`
+            <div class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-autohide="true" data-delay="3000">
+                <div class="toast-header">
+                    <strong class="mr-auto text-${type === 'success' ? 'success' : 'danger'}">系统提示</strong>
+                    <button type="button" class="ml-2 mb-1 close" data-dismiss="toast">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="toast-body">
+                    ${message}
+                </div>
+            </div>
+        `);
+
+        $('#notificationContainer').append(toast);
+        toast.toast('show');
+
+        toast.on('hidden.bs.toast', () => {
+            toast.remove();
+        });
+    }
+</script>
+</body>
+
+</html>

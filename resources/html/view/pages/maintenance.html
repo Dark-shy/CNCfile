@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>网站维护中</title>
+    <!-- Bootstrap 4 CSS -->
+    <link href="../bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft YaHei", sans-serif;
+        }
+
+        .maintenance-container {
+            text-align: center;
+            padding: 2rem;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            margin: 20px auto;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            max-width: 800px;
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        .maintenance-icon {
+            font-size: 5rem;
+            margin-bottom: 2rem;
+            color: #ff6b6b;
+            animation: pulse 2s infinite;
+        }
+
+        .maintenance-title {
+            font-size: 2.5rem;
+            margin-bottom: 1.5rem;
+            color: #2d3436;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .maintenance-description {
+            color: #636e72;
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+            line-height: 1.6;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .countdown {
+            font-size: 1.4rem;
+            margin-top: 2rem;
+            color: #2d3436;
+            font-weight: 500;
+            padding: 12px 24px;
+            background: rgba(255, 107, 107, 0.1);
+            border-radius: 8px;
+            display: inline-block;
+        }
+
+        .progress-bar {
+            height: 4px;
+            background: rgba(255, 107, 107, 0.2);
+            width: 60%;
+            margin: 2rem auto;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .progress {
+            width: 60%;
+            height: 100%;
+            background: #ff6b6b;
+            animation: progress 3s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.08);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes progress {
+            0% {
+                transform: translateX(-100%);
+            }
+
+            100% {
+                transform: translateX(200%);
+            }
+        }
+    </style>
+</head>
+
+<body>
+<div class="container">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="maintenance-container">
+                <i class="fas fa-tools maintenance-icon"></i>
+                <h1 class="maintenance-title">系统升级进行中</h1>
+                <p class="maintenance-description">
+                    我们正在进行重要的系统升级，以提供更优质的服务体验。升级期间您将无法访问网站，给您带来的不便敬请谅解。
+                </p>
+                <div class="progress-bar">
+                    <div class="progress"></div>
+                </div>
+                <div class="countdown" id="countdown">
+                    预计恢复时间：2小时后
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap 4 JS -->
+<script src="../js/jquery-3.7.1.min.js"></script>
+<script src="../bootstrap/js/bootstrap.min.js"></script>
+<script>
+    // 优化版倒计时（固定时间创建更简洁）
+    const targetTime = new Date('2025-03-30T16:10:00');
+
+    function updateCountdown() {
+        const now = Date.now(); // 更简洁的当前时间戳获取方式
+        const diff = targetTime - now;
+
+        if (diff <= 0) {
+            clearInterval(timer);
+            document.getElementById('countdown').innerHTML =
+                `<i class="fas fa-check-circle mr-2"></i>网站已恢复访问！`;
+            return;
+        }
+
+        // 使用解构赋值简化时间计算
+        const [hours, minutes, seconds] = [
+            Math.floor(diff / 3_600_000),          // 小时
+            Math.floor(diff % 3_600_000 / 60_000), // 分钟
+            Math.floor(diff % 60_000 / 1_000)      // 秒
+        ];
+
+        document.getElementById('countdown').innerHTML =
+            `<i class="fas fa-clock mr-2"></i>预计恢复时间：${hours}小时${minutes}分${seconds}秒`;
+    }
+
+    // 自动初始化
+    document.addEventListener("DOMContentLoaded", () => {
+        let timer = setInterval(updateCountdown, 1000);
+        updateCountdown(); // 立即执行避免初始空白
+    });
+</script>
+</body>
+
+</html>

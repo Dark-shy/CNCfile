@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>aMADA程序管理</title>
+    <link href="../bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .card-header {
+            background-color: #0270C1;
+            color: white;
+        }
+
+        .table th,
+        .table td {
+            vertical-align: middle;
+            word-break: break-all;
+            word-wrap: break-word;
+        }
+
+        btn-approve,
+        .btn-disapprove {
+            width: 100px;
+        }
+
+        .table td.text-truncate,
+        .table th.text-truncate {
+            max-width: 150px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    </style>
+</head>
+
+<body>
+<script src="../js/jquery-3.7.1.min.js"></script>
+<script src="../bootstrap/js/bootstrap.min.js"></script>
+<script src="../js/index.js"></script>
+<div class="container mt-5">
+    <ul class="nav nav-tabs" id="myTab" role="tablist">
+        <li class="nav-item">
+            <a aria-controls="downloadfile" aria-selected="true" class="nav-link active" data-toggle="tab"
+               href="#downloadfile"
+               id="downloadfile-tab" role="tab">下载程序</a>
+        </li>
+        <li class="nav-item">
+            <a aria-controls="addfile" aria-selected="false" class="nav-link" data-toggle="tab" href="#addfile"
+               id="addfile-tab" role="tab">上传程序</a>
+        </li>
+        <li class="nav-item">
+            <a aria-controls="findfile" aria-selected="false" class="nav-link" data-toggle="tab" href="#findfile"
+               id="findfile-tab" role="tab">查询程序</a>
+        </li>
+        <li class="nav-item">
+            <a aria-controls="approvefile" aria-selected="false" class="nav-link" data-toggle="tab" href="#approvefile"
+               id="approvefile-tab" role="tab">文件审批</a>
+        </li>
+        <li class="nav-item ml-auto">
+            <button class="btn btn-primary" id="changePasswordBtn" type="button">
+                更改密码
+            </button>
+        </li>
+    </ul>
+    <div class="modal fade" id="myModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title">密码管理</h5>
+                    <button aria-label="关闭" class="close" data-dismiss="modal" type="button">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form id="dataForm" novalidate>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label class="font-weight-bold">姓名</label>
+                            <input class="form-control" id="username" required type="text">
+                            <div class="invalid-feedback">请输入姓名</div>
+                        </div>
+                        <div class="form-group">
+                            <label class="font-weight-bold">新密码</label>
+                            <input class="form-control" id="password" minlength="6" pattern="^(?=.*[A-Za-z])(?=.*\d).+$"
+                                   required
+                                   type="text">
+                            <div class="invalid-feedback">此项为必填项</div>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light">
+                        <button class="btn btn-secondary" data-dismiss="modal" type="button">取消</button>
+                        <button class="btn btn-primary" id="changePassword" type="submit">提交</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="tab-content" id="myTabContent">
+        <!-- 下载程序 -->
+        <div aria-labelledby="downloadfile-tab" class="tab-pane fade show active" id="downloadfile" role="tabpanel">
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h3 class="mb-0">aMADA程序下载</h3>
+                </div>
+                <div class="card-body">
+                    <form class="form-inline" id="downloadSearchForm">
+                        <div class="form-group mb-2">
+                            <label class="sr-only" for="downloadPartNumber">品号</label>
+                            <input class="form-control" id="downloadPartNumber" placeholder="请输入品号" type="text">
+                        </div>
+                        <button class="btn btn-primary mb-2 ml-2" type="submit">查询</button>
+                    </form>
+                    <table class="table table-striped mt-4">
+                        <thead>
+                        <tr>
+                            <th>品号</th>
+                            <th>品名</th>
+                            <th>规格</th>
+                            <th>版本</th>
+                            <th>工程师</th>
+                            <th>aMADA排版程序名</th>
+                            <th>操作</th>
+                            <th>变更锁定</th>
+                        </tr>
+                        </thead>
+                        <tbody id="downloadProgramRecords">
+                        <!-- 程序记录将显示在这里 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <!-- 上传程序 -->
+        <div aria-labelledby="addfile-tab" class="tab-pane fade" id="addfile" role="tabpanel">
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h3 class="mb-0">aMADA排版程序申请单</h3>
+                </div>
+                <div class="card-body">
+                    <form enctype="multipart/form-data" id="uploadForm">
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label for="addUser">申请人</label>
+                                <input class="form-control" id="addUser" placeholder="请输入申请人" required
+                                       type="text">
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="department">申请人部门</label>
+                                <input class="form-control" id="department" placeholder="请输入申请人部门" required
+                                       type="text">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label for="date">当前日期</label>
+                                <input class="form-control" id="date" readonly required type="text" value="">
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="engineer">工程师名</label>
+                                <input class="form-control" id="engineer" placeholder="请输入工程师名" required
+                                       type="text">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label for="partNumber">品号</label>
+                                <input class="form-control" id="partNumber" placeholder="请输入品号" required
+                                       type="text">
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="partName">品名</label>
+                                <input class="form-control" id="partName" placeholder="请输入品名" required type="text">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label for="specification">规格</label>
+                                <input class="form-control" id="specification" placeholder="请输入规格" required
+                                       type="text">
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="type">类型</label>
+                                <select class="form-control" id="type" required>
+                                    <option selected value="批量">批量</option>
+                                    <option value="打样">打样</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row align-items-end">
+                            <div class="form-group col-md-9">
+                                <label for="file">文件上传</label>
+                                <div class="custom-file">
+                                    <input class="custom-file-input" id="file" name="file" required type="file">
+                                    <label class="custom-file-label" for="file">选择文件</label>
+                                </div>
+                            </div>
+                            <div class="form-group col-md-3">
+                                <button class="btn btn-primary btn-block" type="submit">提交</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h3 class="mb-0">历史上传记录</h3>
+                </div>
+                <div class="card-body">
+                    <table class="table table-striped">
+                        <thead>
+                        <tr>
+                            <th>品号</th>
+                            <th class="text-truncate">品名</th>
+                            <th class="text-truncate">规格</th>
+                            <th>申请人</th>
+                            <th>工程师</th>
+                            <th>申请日期</th>
+                            <th>版本</th>
+                            <th>aMADA排版程序名</th>
+                        </tr>
+                        </thead>
+                        <tbody id="historyRecords">
+                        <!-- 历史记录将显示在这里 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <!-- 查询程序 -->
+        <div aria-labelledby="findfile-tab" class="tab-pane fade" id="findfile" role="tabpanel">
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h3 class="mb-0">aMADA程序查询</h3>
+                </div>
+                <div class="card-body">
+                    <form class="form-inline" id="searchForm">
+                        <div class="form-group mb-2">
+                            <label class="sr-only" for="partNumber">品号</label>
+                            <input class="form-control" id="findPartNumber" placeholder="请输入品号" type="text">
+                        </div>
+                        <div class="form-group mb-2 ml-2">
+                            <label class="sr-only" for="addTime">申请日期</label>
+                            <input class="form-control" id="addTime" type="date">
+                        </div>
+                        <div class="form-group mb-2 ml-2">
+                            <label class="sr-only" for="state">是否锁定</label>
+                            <select class="form-control" id="state">
+                                <option value="">是否锁定</option>
+                                <option value="0">否</option>
+                                <option value="1">是</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary mb-2 ml-2" type="submit">查询</button>
+                    </form>
+                    <table class="table table-striped mt-4">
+                        <thead>
+                        <tr>
+                            <th>序号</th>
+                            <th>品号</th>
+                            <th class="text-truncate">品名</th>
+                            <th class="text-truncate">规格</th>
+                            <th>工程师</th>
+                            <th>申请日期</th>
+                            <th>是否锁定</th>
+                            <th>aMADA排版程序名</th>
+                            <th>版本号</th>
+                            <th>类型</th>
+                            <th>申请人</th>
+                            <th>解锁操作</th>
+                        </tr>
+                        </thead>
+                        <tbody id="programRecords">
+                        <!-- 程序记录将显示在这里 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <!-- 文件审批 -->
+        <div aria-labelledby="approvefile-tab" class="tab-pane fade" id="approvefile" role="tabpanel">
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h3 class="mb-0">文件审批</h3>
+                </div>
+                <div class="card-body">
+                    <table class="table table-striped mt-4">
+                        <thead>
+                        <tr>
+                            <th>品号</th>
+                            <th class="text-truncate">品名</th>
+                            <th class="text-truncate">规格</th>
+                            <th>版本</th>
+                            <th>工程师</th>
+                            <th>aMADA排版程序名</th>
+                            <th>审批</th>
+                        </tr>
+                        </thead>
+                        <tbody id="approveRecords">
+                        <!-- 审批记录将显示在这里 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    $(document).ready(function () {
+        $('[data-toggle="tooltip"]').tooltip();
+    });
+</script>
+</body>
+
+</html>

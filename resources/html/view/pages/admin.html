@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>用户管理</title>
+    <link href="../bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <!-- 添加Bootstrap图标 -->
+    <!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"> -->
+    <style>
+        .search-box {
+            max-width: 400px;
+            transition: all 0.3s ease;
+        }
+
+        .search-box:focus-within {
+            box-shadow: 0 0 8px rgba(0, 123, 255, 0.25);
+        }
+
+        .highlight {
+            background-color: #fff3cd !important;
+        }
+    </style>
+</head>
+
+<body>
+<script src="../js/jquery-3.7.1.min.js"></script>
+<script src="../bootstrap/js/bootstrap.min.js"></script>
+<div class="container mt-5">
+    <div class="card">
+        <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2 class="mb-0">用户管理</h2>
+                <div class="search-box">
+                    <div class="input-group">
+                        <input aria-label="工号搜索" class="form-control" id="workCodeSearch"
+                               placeholder="输入工号进行检索" type="text">
+                        <div class="input-group-append">
+                            <button class="btn btn-outline-primary" onclick="filterUsers()" type="button">
+
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <table class="table table-striped table-hover">
+                <thead class="thead-dark">
+                <tr>
+                    <th>用户名</th>
+                    <th>工号</th>
+                    <th>密码</th>
+                    <th style="min-width: 300px;">角色</th>
+                    <th>操作</th>
+                </tr>
+                </thead>
+                <tbody id="userTableBody">
+                <!-- 用户数据将显示在这里 -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<script>
+    var ip = 'http://10.10.10.104:8080';
+    var allUserData = []; // 存储全部用户数据
+    var currentFilter = ''; // 当前过滤条件
+
+    $(document).ready(function () {
+        initData();
+        $('#workCodeSearch').on('input', debounce(filterUsers, 300));
+    });
+
+    function initData() {
+        $.when(
+            $.ajax({url: ip + '/userprofile', type: 'GET'}),
+            $.ajax({url: ip + '/user', type: 'GET'})
+        ).done(function (profileData, userData) {
+            allUserData = profileData[0].map(profile => ({
+                profile: profile,
+                user: userData[0].find(u => u.username === profile.workCode)
+            }));
+            renderTable();
+        }).fail(handleDataError);
+    }
+
+    function renderTable() {
+        var tbody = $('#userTableBody');
+        tbody.empty();
+
+        allUserData.filter(data => {
+            const workCode = data.profile.workCode.toLowerCase();
+            return workCode.includes(currentFilter.toLowerCase());
+        }).forEach(data => {
+            const {profile, user} = data;
+            const row = buildTableRow(profile, user);
+            tbody.append(row);
+        });
+
+        bindRowEvents();
+        addHighlightEffect();
+    }
+
+    function buildTableRow(profile, user) {
+        return `<tr>
+                <td>${profile.userName}</td>
+                <td class="workcode-cell">${profile.workCode}</td>
+                <td>
+                    <input type="password" 
+                           class="form-control password-input" 
+                           data-id="${user?.id || ''}" 
+                           value="${user ? '********' : ''}">
+                </td>
+                <td>${buildRoleRadioGroup(profile.workCode, user)}</td>
+                <td>
+                    ${user ?
+            `<button class="btn btn-sm btn-primary update-btn" data-id="${user.id}">修改</button>` :
+            `<button class="btn btn-sm btn-success add-btn" data-id="${profile.workCode}">添加</button>`}
+                </td>
+            </tr>`;
+    }
+
+    function buildRoleRadioGroup(workCode, user) {
+        const roles = [
+            {value: 'user1', label: '工艺工程师'},
+            {value: 'user2', label: '五金工程师'},
+            {value: 'user3', label: 'aMADA操作员'},
+            {value: 'userA', label: 'CNC工程师'},
+            // { value: 'userc', label: 'CNC观察员' },
+            {value: 'userB', label: 'CNC操作员'}
+        ];
+
+        return roles.map(role => `
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input role-radio" 
+                           type="radio" 
+                           name="role-${workCode}" 
+                           data-id="${user?.id || ''}" 
+                           value="${role.value}"
+                           ${user?.role === role.value ? 'checked' : ''}>
+                    <label class="form-check-label">${role.label}</label>
+                </div>
+            `).join('');
+    }
+
+    // 事件绑定函数
+    function bindRowEvents() {
+        $('.update-btn').off('click').on('click', handleUpdate);
+        $('.add-btn').off('click').on('click', handleAdd);
+        $('.password-input').off('change').on('change', handlePasswordChange);
+        $('.role-radio').off('change').on('change', handleRoleChange);
+    }
+
+    // 搜索相关功能
+    function filterUsers() {
+        currentFilter = $('#workCodeSearch').val().trim();
+        renderTable();
+    }
+
+    function addHighlightEffect() {
+        const searchTerm = currentFilter.toLowerCase();
+        if (!searchTerm) return;
+
+        $('.workcode-cell').each(function () {
+            const text = $(this).text().toLowerCase();
+            if (text.includes(searchTerm)) {
+                $(this).addClass('highlight');
+            }
+        });
+    }
+
+    // 工具函数
+    function debounce(func, wait) {
+        let timeout;
+        return function (...args) {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), wait);
+        };
+    }
+
+    function handleDataError() {
+        alert('数据加载失败，请刷新重试');
+    }
+
+    // 以下是原有的业务逻辑保持不变
+    function handleUpdate() {
+        const id = $(this).data('id');
+        const row = $(this).closest('tr');
+        updateUser(id,
+            row.find('.password-input').val(),
+            row.find('.role-radio:checked').val()
+        );
+    }
+
+    function handleAdd() {
+        const workCode = $(this).data('id');
+        const row = $(this).closest('tr');
+        addUser(workCode,
+            row.find('.password-input').val(),
+            row.find('.role-radio:checked').val()
+        );
+    }
+
+    function handlePasswordChange() {
+        const id = $(this).data('id');
+        console.log('密码修改:', id, $(this).val());
+    }
+
+    function handleRoleChange() {
+        const id = $(this).data('id');
+        console.log('角色修改:', id, $(this).val());
+    }
+
+    function updateUser(id, password, role) {
+        $.ajax({
+            url: ip + '/user/',
+            type: 'PUT',
+            contentType: 'application/json',
+            data: JSON.stringify({id: id, password: password, role: role}),
+            success: () => {
+                alert('更新成功');
+                initData();
+            },
+            error: () => alert('更新失败')
+        });
+    }
+
+    function addUser(workCode, password, role) {
+        if (!password || !role) {
+            alert('密码和角色不能为空');
+            return;
+        }
+        $.ajax({
+            url: ip + '/newuser',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({username: workCode, password: password, role: role}),
+            success: () => {
+                alert('添加成功');
+                initData();
+            },
+            error: () => alert('添加失败')
+        });
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>木工CNC-Ard程序上传申请单</title>
+    <link href="../bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <script src="../js/jquery-3.7.1.min.js"></script>
+    <script src="../bootstrap/js/bootstrap.min.js"></script>
+    <script src="../js/cncFile.js"></script>
+    <style>
+        .table th,
+        .table td {
+            vertical-align: middle;
+            min-width: 120px;
+        }
+
+        .btn-sm {
+            margin: 2px;
+            padding: 0.25rem 0.5rem;
+        }
+
+        .file-upload-btn {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+
+        .file-upload-input {
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+        }
+
+        .card-header h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .form-group label {
+            font-weight: 500;
+        }
+
+        .custom-file-label::after {
+            content: "浏览";
+            background-color: #e9ecef;
+            border-left: 1px solid #ced4da;
+        }
+
+        @media (min-width: 1600px) {
+            .custom-xxl-container {
+                max-width: 1500px;
+                /* 自定义宽度 */
+                margin: 0 auto;
+                /* 居中显示 */
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container-fluid custom-xxl-container mt-4">
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white  d-flex justify-content-between align-items-center">
+            <h2 class="mb-0">木工CNC-Ard程序上传</h2>
+            <button class="btn btn-light text-primary border-primary" onclick="location.href='cncindex.html'"
+                    type="button">
+                返回首页
+            </button>
+        </div>
+        <div class="card-body">
+            <form id="uploadForm">
+                <div class="form-row">
+                    <div class="form-group col-md-4">
+                        <label for="applicant">申请人</label>
+                        <input class="form-control" id="applicant" required type="text">
+                    </div>
+                    <div class="form-group col-md-4">
+                        <label for="department">申请部门</label>
+                        <input class="form-control" id="department" required type="text">
+                    </div>
+                    <div class="form-group col-md-4">
+                        <label for="date">申请日期</label>
+                        <input class="form-control" id="date" required type="date">
+                    </div>
+                    <div class="form-group col-md-4">
+                        <label for="engineer">工程师</label>
+                        <input class="form-control" id="engineer" required type="text">
+                    </div>
+                    <div class="form-group col-md-4">
+                        <label for="partNumber">品号</label>
+                        <input class="form-control" id="partNumber" required type="text">
+                    </div>
+                    <div class="form-group col-md-4">
+                        <label for="partName">品名</label>
+                        <input class="form-control" id="partName" required type="text">
+                    </div>
+                    <div class="form-group col-md-4">
+                        <label for="specification">规格</label>
+                        <input class="form-control" id="specification" required type="text">
+                    </div>
+                    <div class="form-group col-md-4">
+                        <label for="machineName">机种名</label>
+                        <input class="form-control" id="machineName" required type="text">
+                    </div>
+                    <div class="form-group col-md-4">
+                        <label for="thickness">板材厚度(mm)</label>
+                        <select class="form-control" id="thickness" required>
+                            <option value="2.5">2.5</option>
+                            <option value="6">6</option>
+                            <option value="9">9</option>
+                            <option value="12">12</option>
+                            <option value="15">15</option>
+                            <option value="18">18</option>
+                            <option value="21">21</option>
+                            <option value="24">24</option>
+                            <option value="25">25</option>
+                        </select>
+                    </div>
+                    <div class="form-group col-md-4">
+                        <label for="material">板材材质</label>
+                        <!-- <input type="text" class="form-control" id="material" list="material-options" required>
+                        <datalist id="material-options">
+                            <option value="PB版">
+                            <option value="MDF版">
+                            <option value="HDF版">
+                            <option value="杨木">
+                            <option value="国产全桦木">
+                            <option value="客供全桦木">
+                            <option value="俄罗斯进口全桦木">
+                        </datalist> -->
+                        <select class="form-control" id="material" required>
+                            <option value="PB板">PB板</option>
+                            <option value="MDF板">MDF板</option>
+                            <option value="HDF板">HDF板</option>
+                            <option value="杨木">杨木</option>
+                            <option value="国产全桦木">国产全桦木</option>
+                            <option value="客供全桦木">客供全桦木</option>
+                            <option value="桦木面桉木芯夹板">桦木面桉木芯夹板</option>
+                            <option value="俄罗斯进口全桦木">俄罗斯进口全桦木</option>
+                        </select>
+                    </div>
+                    <div class="form-group col-md-4">
+                        <label for="versionPrefix">版本首选字母</label>
+                        <select class="form-control" id="versionPrefix" required>
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                            <option value="C">C</option>
+                            <option value="D">D</option>
+                            <option value="E">E</option>
+                        </select>
+                    </div>
+                    <div class="form-group col-md-4">
+                        <label for="versionType">版本类型</label>
+                        <select class="form-control" id="versionType" required>
+                            <option value="升版">升版</option>
+                            <option value="修订">修订</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                        <thead class="thead-light">
+                        <tr class="text-truncate">
+                            <th>品号</th>
+                            <th>品名</th>
+                            <th>规格</th>
+                            <th>机种名</th>
+                            <th>板材厚度</th>
+                            <th>板材材质</th>
+                            <th>散版类型</th>
+                            <th>版本</th>
+                            <th>运算程序名</th>
+                            <th>CNC-Ard程序</th>
+                            <th>备注</th>
+                            <th>操作</th>
+                        </tr>
+                        </thead>
+                        <tbody id="programRecords">
+                        <!-- 初始行 -->
+                        <tr>
+                            <td><span class="displayPartNumber"></span></td>
+                            <td><span class="displayPartName"></span></td>
+                            <td><span class="displaySpecification"></span></td>
+                            <td><span class="displayMachineName"></span></td>
+                            <td><span class="displayThickness"></span></td>
+                            <td><span class="displayMaterial"></span></td>
+                            <td>
+                                <select class="form-control form-control-sm scattered-type">
+                                    <option value="..">...</option>
+                                </select>
+                            </td>
+                            <td><span class="displayVersionPrefix"></span></td>
+                            <td><span class="displayProgramName">待生成</span></td>
+                            <td>
+                                <div class="file-upload-btn">
+                                    <button class="btn btn-primary btn-sm" type="button">选择文件</button>
+                                    <input accept=".ino,.pde,.nc,.gcode,.tap,.ard" class="file-upload-input"
+                                           data-file-id="file${fileCounter}"
+                                           required type="file">
+                                </div>
+                            </td>
+                            <td><input class="form-control form-control-sm" type="text"></td>
+                            <td>
+                                <button class="btn btn-outline-success btn-sm addRow" type="button">＋</button>
+                                <button class="btn btn-outline-danger btn-sm removeRow" type="button">－</button>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- CAD文件上传 -->
+                <div class="form-group mt-4">
+                    <div class="custom-file">
+                        <input accept=".dwg,.bak,.dxf" class="custom-file-input" id="cadFiles" multiple type="file">
+                        <label class="custom-file-label" for="cadFiles">选择CAD图纸文件（可多选）</label>
+                    </div>
+                </div>
+
+                <div class="text-center mt-4">
+                    <button class="btn btn-primary px-5" type="submit">
+                        提交申请
+                    </button>
+                </div>
+            </form>
+            <div>&nbsp;</div>
+            <h4 class="mb-0">历史上传记录：</h4>
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover" id="historyTable">
+                    <thead class="thead-light">
+                    <tr>
+                        <th>品名</th>
+                        <th>品号</th>
+                        <th>规格</th>
+                        <th>机种名</th>
+                        <th>散板类型</th>
+                        <th>申请人</th>
+                        <th>工程师</th>
+                        <th>申请日期</th>
+                        <th>版本</th>
+                        <th>CNC-Ard程序名</th>
+                        <th>CAD图纸文件名</th>
+
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <!-- 历史记录数据将插入到这里 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+</body>
+
+</html>
